@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from "react";
 
+/* ---------- CSV utils (you already had these) ---------- */
 function parseCsv(text) {
   const rows = [];
   let row = [];
@@ -26,18 +27,18 @@ function parseCsv(text) {
   return rows;
 }
 
-// Convert parsed CSV → array of objects using header row
 function csvToObjects(rows) {
   if (!rows || rows.length === 0) return [];
   const headers = rows[0].map((h) => String(h || "").trim());
-  return rows.slice(1).map((r) => {
+  return rows.slice(1).map((
+    r) => {
     const obj = {};
     headers.forEach((h, i) => { obj[h] = r[i] != null ? r[i] : ""; });
     return obj;
   });
 }
 
-// Build schedule groups: supports columns Day | Time | Item (or Day | Item)
+/* ---------- Schedule mapper (you already had this) ---------- */
 function toScheduleRows(objs) {
   if (!objs || objs.length === 0) return [];
   const groups = new Map();
@@ -48,16 +49,9 @@ function toScheduleRows(objs) {
 
     const time = (o.Time || o.TIME || o.time || "").trim();
     const raw =
-      o.Item ||
-      o.ITEM ||
-      o.item ||
-      o.Event ||
-      o.EVENT ||
-      o.event ||
-      o.Activity ||
-      o.ACTIVITY ||
-      o.activity ||
-      "";
+      o.Item || o.ITEM || o.item ||
+      o.Event || o.EVENT || o.event ||
+      o.Activity || o.ACTIVITY || o.activity || "";
 
     const line = time ? `${time} ${String(raw).trim()}`.trim() : String(raw).trim();
     if (!groups.has(day)) groups.set(day, []);
@@ -82,11 +76,26 @@ function toScheduleRows(objs) {
   return arr;
 }
 
+/* ---------- NEW: Contacts mapper (case-insensitive headers) ---------- */
+function toContacts(objs) {
+  if (!objs || objs.length === 0) return [];
+  const pick = (o, ...keys) => {
+    for (const k of keys) {
+      if (o[k] != null && String(o[k]).trim() !== "") return String(o[k]).trim();
+    }
+    return "";
+  };
+  return objs
+    .map((o) => ({
+      name:  pick(o, "Name", "NAME", "name"),
+      role:  pick(o, "Role", "ROLE", "role"),
+      phone: pick(o, "Phone", "PHONE", "phone"),
+      email: pick(o, "Email", "EMAIL", "email"),
+    }))
+    .filter((r) => r.name );
+}
 
-
-// Camp Shenandoah – MVP App (green & yellow theme)
-// Fixed: removed stray/duplicate JSX after Card component that caused a syntax error.
-
+/* ---------- App Data ---------- */
 const DATA = {
   schedule: [ /* …yours… */ ],
   dining: [
@@ -106,10 +115,14 @@ const DATA = {
   program: [],
 };
 
-// Chatgpt helpers
-const SHEET_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRtlaZ-xFkl4DWcBjTTLNUSNdMS7LuJVR3LDp-QPjNaY8i7ffqsDgScj03g3lpu8O6LDKkhtXnqZ3Ir/pub?output=csv"
+/* ---------- Existing Schedule CSV ---------- */
+const SHEET_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRtlaZ-xFkl4DWcBjTTLNUSNdMS7LuJVR3LDp-QPjNaY8i7ffqsDgScj03g3lpu8O6LDKkhtXnqZ3Ir/pub?output=csv";
 
-// App version for header + update banner
+/* ---------- NEW: Contacts CSV (publish your sheet as CSV and paste here) ---------- */
+// Example sheet columns: Name, Role, Phone, Email  (exact headers recommended)
+const CONTACTS_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSE5hkCpEnoVAVTUZE4RmqX0xnnyY9pgfBelP-sTURTe2di57NrpCIRbES1NIN77drrH1NZG3-BcJ9l/pub?output=csv"; // 🔗 CONTACTS CSV
+
+/* ---------- Misc ---------- */
 const APP_VERSION = "2025.10.26-1"; // update anytime you deploy
 
 const S = {
@@ -241,7 +254,6 @@ function SchedulePanel({ open, onClose, schedule = [] }) {
       onClose={() => { setSelected(null); onClose(); }}
     >
       {!selected ? (
-        // GRID OF DAY CARDS
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 12 }}>
           {schedule.map((d) => (
             <div
@@ -251,7 +263,6 @@ function SchedulePanel({ open, onClose, schedule = [] }) {
               style={{
                 ...S.card,
                 cursor: "pointer",
-                // optional: force white cards w/ black text
                 background: "#ffffff",
                 color: "#000",
                 border: "1px solid rgba(0,0,0,0.15)"
@@ -264,7 +275,6 @@ function SchedulePanel({ open, onClose, schedule = [] }) {
           ))}
         </div>
       ) : (
-        // SELECTED DAY DETAIL
         <div>
           <button
             style={{ ...S.closeBtn, marginBottom: 12 }}
@@ -342,15 +352,18 @@ function MapPanel({ open, onClose, map }) {
   );
 }
 
-function ContactsPanel({ open, onClose, contacts = [] }) {
+/* ---------- UPDATED: ContactsPanel shows status and uses injected data ---------- */
+function ContactsPanel({ open, onClose, contacts = [], status = "idle" }) {
   if (!open) return null;
   return (
     <Panel title="Contacts" onClose={onClose}>
       <div style={{ display: "grid", gap: 12 }}>
-        {contacts.length === 0 && <div style={{ ...S.badgelite }}>Contacts will appear here.</div>}
+        {status === "loading" && <div style={S.badgelite}>Loading contacts…</div>}
+        {status === "error" && <div style={{ ...S.badgelite, background: "#fff5c7" }}>Couldn’t load live contacts. Showing last saved.</div>}
+        {contacts.length === 0 && status !== "loading" && <div style={{ ...S.badgelite }}>Contacts will appear here.</div>}
         {contacts.map((c) => (
           <div
-            key={c.name}
+            key={`${c.name}-${c.email || c.phone || ""}`}
             style={{
               background: "#fff",
               color: "#000",
@@ -370,11 +383,7 @@ function ContactsPanel({ open, onClose, contacts = [] }) {
                 </a>
               )}
               {c.email && (
-                <a
-                  href={`mailto:${c.email}`}
-                  style={{ ...S.button, textDecoration: "none" }}
-                  aria-label={`Email ${c.name}`}
-                >
+                <a href={`mailto:${c.email}`} style={{ ...S.button, textDecoration: "none" }} aria-label={`Email ${c.name}`}>
                   ✉️ {c.email}
                 </a>
               )}
@@ -386,46 +395,77 @@ function ContactsPanel({ open, onClose, contacts = [] }) {
   );
 }
 
-
-
 export default function CampShenandoahApp() {
   const [open, setOpen] = useState(null);
-  const [liveSchedule, setLiveSchedule] = React.useState(DATA.schedule); // fallback to local
-  const [schedStatus, setSchedStatus] = React.useState("idle");          // idle | loading | error
+
+  // Schedule (existing)
+  const [liveSchedule, setLiveSchedule] = React.useState(DATA.schedule);
+  const [schedStatus, setSchedStatus] = React.useState("idle");
 
   React.useEffect(() => {
     let isMounted = true;
-  async function load() {
-    try {
-      setSchedStatus("loading");
-      const res = await fetch(SHEET_CSV_URL, { cache: "no-store" });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const text = await res.text();
-      const rows = parseCsv(text);
-      const objs = csvToObjects(rows);
-      const grouped = toScheduleRows(objs);
-      if (isMounted && grouped.length) {
-        setLiveSchedule(grouped);
-        setSchedStatus("idle");
-      } else if (isMounted) {
-        setSchedStatus("error");
+    async function load() {
+      try {
+        setSchedStatus("loading");
+        const res = await fetch(SHEET_CSV_URL, { cache: "no-store" });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const text = await res.text();
+        const rows = parseCsv(text);
+        const objs = csvToObjects(rows);
+        const grouped = toScheduleRows(objs);
+        if (isMounted && grouped.length) {
+          setLiveSchedule(grouped);
+          setSchedStatus("idle");
+        } else if (isMounted) {
+          setSchedStatus("error");
+        }
+      } catch (e) {
+        console.error("Schedule fetch failed:", e);
+        if (isMounted) setSchedStatus("error");
       }
-    } catch (e) {
-      console.error("Schedule fetch failed:", e);
-      if (isMounted) setSchedStatus("error");
     }
-  }
-  load();
-  return () => { isMounted = false; };
-}, []);
+    load();
+    return () => { isMounted = false; };
+  }, []);
+
+  // 🔗 CONTACTS CSV: live contacts + status
+  const [liveContacts, setLiveContacts] = useState(DATA.contacts);
+  const [contactsStatus, setContactsStatus] = useState("idle");
+
+  React.useEffect(() => {
+    let isMounted = true;
+    async function loadContacts() {
+      // Skip if not configured yet
+      if (!CONTACTS_CSV_URL || CONTACTS_CSV_URL.includes("REPLACE_ME")) return;
+      try {
+        setContactsStatus("loading");
+        const res = await fetch(CONTACTS_CSV_URL, { cache: "no-store" });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const text = await res.text();
+        const rows = parseCsv(text);
+        const objs = csvToObjects(rows);
+        const mapped = toContacts(objs);
+        if (isMounted && mapped.length) {
+          setLiveContacts(mapped);
+          setContactsStatus("idle");
+        } else if (isMounted) {
+          setContactsStatus("error");
+        }
+      } catch (e) {
+        console.error("Contacts fetch failed:", e);
+        if (isMounted) setContactsStatus("error");
+      }
+    }
+    loadContacts();
+    return () => { isMounted = false; };
+  }, []);
+
   const [isOffline, setIsOffline] = useState(!navigator.onLine);
 
-  // Expose a safe updater: works if main.jsx set window.__UPDATE_SW; otherwise reload
   const handleCheckUpdates = () => {
     if (typeof window !== 'undefined' && typeof window.__UPDATE_SW === 'function') {
       window.__UPDATE_SW(true);
     } else {
-      // fallback: trigger a reload to let the PWA check for a new SW
       window.location.reload();
     }
   };
@@ -516,8 +556,9 @@ export default function CampShenandoahApp() {
 
       <SchedulePanel open={open === "schedule"} onClose={() => setOpen(null)} schedule={liveSchedule} status={schedStatus}/>
       <MenuPanel  open={open === "menu"}  onClose={() => setOpen(null)}  dining={DATA.dining}/>
-      <MapPanel  open={open === "map"}  onClose={() => setOpen(null)}  map={DATA.map}/>
-      <ContactsPanel  open={open === "contacts"}  onClose={() => setOpen(null)}  contacts={DATA.contacts}/>
+      <MapPanel   open={open === "map"}   onClose={() => setOpen(null)}   map={DATA.map}/>
+      {/* 🔗 CONTACTS CSV: pass liveContacts + status */}
+      <ContactsPanel open={open === "contacts"} onClose={() => setOpen(null)} contacts={liveContacts} status={contactsStatus}/>
     </div>
   );
 }
