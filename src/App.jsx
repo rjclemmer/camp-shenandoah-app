@@ -212,7 +212,7 @@ const S = {
   button: { background: "#ffffff", color: "#000", border: "1px solid rgba(0,0,0,0.2)", borderRadius: 10, padding: "8px 12px", cursor: "pointer" },
 };
 
-function Card({ icon, title, tag, onClick, styleOverride = {}, chipStyle = {} }) {
+function Card({ icon, title, onClick, styleOverride = {}, chipStyle = {} }) {
   const [hover, setHover] = useState(false);
   return (
     <div
@@ -225,7 +225,6 @@ function Card({ icon, title, tag, onClick, styleOverride = {}, chipStyle = {} })
     >
       <div style={{ fontSize: 28 }}>{icon}</div>
       <div style={S.cardTitle}>{title}</div>
-      {tag ? <div style={{ ...S.chip, ...chipStyle }}>{tag}</div> : null}
     </div>
   );
 }
@@ -462,13 +461,7 @@ export default function CampShenandoahApp() {
 
   const [isOffline, setIsOffline] = useState(!navigator.onLine);
 
-  const handleCheckUpdates = () => {
-    if (typeof window !== 'undefined' && typeof window.__UPDATE_SW === 'function') {
-      window.__UPDATE_SW(true);
-    } else {
-      window.location.reload();
-    }
-  };
+
 
   React.useEffect(() => {
     const onOff = () => setIsOffline(!navigator.onLine);
@@ -496,7 +489,7 @@ export default function CampShenandoahApp() {
             ) : (
               <span style={S.badgelite}>Online</span>
             )}
-            <button style={S.button} onClick={handleCheckUpdates}>Check for updates</button>
+           
           </div>
         </header>
 
@@ -505,7 +498,6 @@ export default function CampShenandoahApp() {
             <Card
               icon="🗓️"
               title="Camp Schedule"
-              tag="Daily"
               onClick={() => setOpen("schedule")}
               styleOverride={{ background: "#ffffff", color: "#000000", border: "1px solid rgba(0,0,0,0.15)" }}
               chipStyle={{ background: "#ffffff", color: "#000000", border: "1px solid rgba(0,0,0,0.12)" }}
@@ -513,7 +505,6 @@ export default function CampShenandoahApp() {
             <Card
               icon="🍽️"
               title="Dining Hall Menu"
-              tag="Meals"
               onClick={() => setOpen("menu")}
               styleOverride={{ background: "#ffffff", color: "#000000", border: "1px solid rgba(0,0,0,0.15)" }}
               chipStyle={{ background: "#ffffff", color: "#000000", border: "1px solid rgba(0,0,0,0.12)" }}
@@ -521,7 +512,6 @@ export default function CampShenandoahApp() {
             <Card
               icon="🗺️"
               title="Camp Map"
-              tag="Tap to open"
               onClick={() => setOpen("map")}
               styleOverride={{ background: "#ffffff", color: "#000000", border: "1px solid rgba(0,0,0,0.15)" }}
               chipStyle={{ background: "#ffffff", color: "#000000", border: "1px solid rgba(0,0,0,0.12)" }}
@@ -529,7 +519,6 @@ export default function CampShenandoahApp() {
             <Card
               icon="☎️"
               title="Contacts"
-              tag="Call/Email"
               onClick={() => setOpen("contacts")}
               styleOverride={{ background: "#ffffff", color: "#000000", border: "1px solid rgba(0,0,0,0.15)" }}
               chipStyle={{ background: "#ffffff", color: "#000000", border: "1px solid rgba(0,0,0,0.12)" }}
@@ -537,7 +526,6 @@ export default function CampShenandoahApp() {
             <Card
               icon="🏪"
               title="Trading Post"
-              tag="Browse"
               onClick={() => setOpen("trading")}
               styleOverride={{ background: "#ffffff", color: "#000000", border: "1px solid rgba(0,0,0,0.15)" }}
               chipStyle={{ background: "#ffffff", color: "#000000", border: "1px solid rgba(0,0,0,0.12)" }}
@@ -545,7 +533,6 @@ export default function CampShenandoahApp() {
             <Card
               icon="🎯"
               title="Program"
-              tag="Areas"
               onClick={() => setOpen("program")}
               styleOverride={{ background: "#ffffff", color: "#000000", border: "1px solid rgba(0,0,0,0.15)" }}
               chipStyle={{ background: "#ffffff", color: "#000000", border: "1px solid rgba(0,0,0,0.12)" }}
